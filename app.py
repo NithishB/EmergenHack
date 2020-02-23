@@ -142,7 +142,7 @@ def sms_notification(reason):
                 .create(
                      body=reason,
                      from_='+16466634750',
-                     to='+14806284169'
+                     to='+14806850966'
                  )
 
 @app.route('/', methods=['POST'])
@@ -166,7 +166,7 @@ def home():
     v_model.eval()
     # Get predictions
     a_out = torch.nn.functional.softmax(a_model(a_inp))
-    print(a_out)
+    # print("Audi Output",np.round(a_out.detach().numpy(),2))
     v_out = torch.nn.functional.softmax(v_model(v_inp))
     # Get majority voting for images
     v_out = post_process_images(v_out)
@@ -175,15 +175,25 @@ def home():
     # Sort and get top 3 features
     prob, sort = torch.sort(out, descending=True)
     sort = [mapper[k] for k in sort[0].numpy().tolist()][:3]
-    prob = np.round(torch.nn.functional.softmax(prob[0][:3]).detach().numpy().tolist(), 2)
+    rp = np.sum(prob[0][3:].detach().numpy().tolist())/3
+    prob = np.round(prob[0][:3].detach().numpy().tolist(), 2)+rp
     res={}
     for i,k in enumerate(sort):
         res[k]=prob[i]
         # if i==0 and prob[i]>0.7:
         #     sms_notification("Baby has belly pain!")
         # else:
-        #     sms_notification("Baby needs burping!")
-    print(res)
+    sms_msgs = {
+        'bellypain' : "Mommm! I am in danger! MY STOMACH IS PAINING",
+        'burp' : "Never mind, Just burping",
+        'discomfort' : "TAKE ME OUTTA HERE Mom. Feeling uncomfortable",
+        'hungry' : "FEED ME Mummmaaaaa, Sobsss!!",
+        'tired' : "Time for a bed time storyyy.. I am falling asleeeeepp",
+    }
+    predicted_class = list(res.keys())[0]
+    # print(predicted_class)
+    # print(str(np.argmax(prob)))
+    sms_notification(sms_msgs[predicted_class])
     return json.dumps(res)
     
 app.run()
